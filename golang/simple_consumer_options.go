@@ -58,6 +58,7 @@ type simpleConsumerOptions struct {
 	subscriptionExpressions map[string]*FilterExpression
 	awaitDuration           time.Duration
 	clientFunc              NewClientFunc
+	clientOpts              []ClientOption
 }
 
 var defaultSimpleConsumerOptions = simpleConsumerOptions{
@@ -83,6 +84,12 @@ func newFuncSimpleConsumerOption(f func(*simpleConsumerOptions)) *funcSimpleCons
 	return &funcSimpleConsumerOption{
 		f: f,
 	}
+}
+
+func WithClientOptionForSimpleConsumer(opts ...ClientOption) SimpleConsumerOption {
+	return newFuncSimpleConsumerOption(func(o *simpleConsumerOptions) {
+		o.clientOpts = append(o.clientOpts, opts...)
+	})
 }
 
 // WithClientFuncForSimpleConsumer returns a consumerOption that sets ClientFunc for simple consumer.

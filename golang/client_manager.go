@@ -25,7 +25,9 @@ import (
 	"github.com/apache/rocketmq-clients/golang/v5/pkg/ticker"
 	"github.com/apache/rocketmq-clients/golang/v5/pkg/utils"
 	v2 "github.com/apache/rocketmq-clients/golang/v5/protocol/v2"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 )
 
@@ -48,6 +50,8 @@ type clientManagerOptions struct {
 
 	RPC_CLIENT_IDLE_CHECK_INITIAL_DELAY time.Duration
 	RPC_CLIENT_IDLE_CHECK_PERIOD        time.Duration
+	RPC_KEEPALIVE_TIME                  time.Duration
+	RPC_KEEPALIVE_TIMEOUT               time.Duration
 
 	HEART_BEAT_INITIAL_DELAY time.Duration
 	HEART_BEAT_PERIOD        time.Duration
@@ -64,6 +68,8 @@ var defaultClientManagerOptions = clientManagerOptions{
 
 	RPC_CLIENT_IDLE_CHECK_INITIAL_DELAY: time.Second * 5,
 	RPC_CLIENT_IDLE_CHECK_PERIOD:        time.Minute * 1,
+	RPC_KEEPALIVE_TIME:                  time.Minute * 5,
+	RPC_KEEPALIVE_TIMEOUT:               time.Minute * 30,
 
 	HEART_BEAT_INITIAL_DELAY: time.Second * 1,
 	HEART_BEAT_PERIOD:        time.Second * 10,
@@ -81,6 +87,7 @@ type defaultClientManager struct {
 	clientTable        sync.Map
 	done               chan struct{}
 	opts               clientManagerOptions
+	cliOpts            clientOptions
 }
 
 var _ = ClientManager(&defaultClientManager{})
@@ -90,6 +97,15 @@ var NewDefaultClientManager = func() *defaultClientManager {
 		rpcClientTable: make(map[string]RpcClient),
 		done:           make(chan struct{}),
 		opts:           defaultClientManagerOptions,
+	}
+}
+
+var NewClientManagerWithOpts = func(opts clientOptions) *defaultClientManager {
+	return &defaultClientManager{
+		rpcClientTable: make(map[string]RpcClient),
+		done:           make(chan struct{}),
+		opts:           defaultClientManagerOptions,
+		cliOpts:        opts,
 	}
 }
 
@@ -202,7 +218,15 @@ func (cm *defaultClientManager) getRpcClient(endpoints *v2.Endpoints) (RpcClient
 			return ret, nil
 		}
 	}
-	rpcClient, err := NewRpcClient(target)
+	kpOpts := WithRpcClientConnOption(WithDialOptions(grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:                cm.opts.RPC_KEEPALIVE_TIME,
+		Timeout:             cm.opts.RPC_KEEPALIVE_TIMEOUT,
+		PermitWithoutStream: true,
+	})))
+	allOpts := make([]RpcClientOption, 0, len(cm.cliOpts.rpcClientOptions)+1)
+	allOpts = append(allOpts, kpOpts)
+	allOpts = append(allOpts, cm.cliOpts.rpcClientOptions...)
+	rpcClient, err := NewRpcClient(target, allOpts...)
 	if err != nil {
 		return nil, err
 	}

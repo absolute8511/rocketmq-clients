@@ -33,6 +33,7 @@ type producerOptions struct {
 	maxAttempts int32
 	topics      []string
 	checker     *TransactionChecker
+	clientOpts  []ClientOption
 }
 
 var defaultProducerOptions = producerOptions{
@@ -59,6 +60,12 @@ func newFuncProducerOption(f func(options *producerOptions)) *funcProducerOption
 	return &funcProducerOption{
 		f: f,
 	}
+}
+
+func WithClientOption(opts ...ClientOption) ProducerOption {
+	return newFuncProducerOption(func(o *producerOptions) {
+		o.clientOpts = append(o.clientOpts, opts...)
+	})
 }
 
 // WithClientFunc returns a ProducerOption that sets ClientFunc for producer.

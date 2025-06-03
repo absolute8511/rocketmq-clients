@@ -121,7 +121,7 @@ var NewProducer = func(config *Config, opts ...ProducerOption) (Producer, error)
 	for _, opt := range opts {
 		opt.apply(po)
 	}
-	cli, err := po.clientFunc(config)
+	cli, err := po.clientFunc(config, po.clientOpts...)
 	if err != nil {
 		return nil, err
 	}

@@ -343,7 +343,7 @@ var NewSimpleConsumer = func(config *Config, opts ...SimpleConsumerOption) (Simp
 	if len(config.ConsumerGroup) == 0 {
 		return nil, fmt.Errorf("consumerGroup could not be nil")
 	}
-	cli, err := scOpts.clientFunc(config)
+	cli, err := scOpts.clientFunc(config, scOpts.clientOpts...)
 	if err != nil {
 		return nil, err
 	}
